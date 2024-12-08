@@ -2,6 +2,8 @@
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/uaccess.h>
+#include <linux/fs.h>
 
 #define CHRDEVBASE_MAJOR	200
 #define CHRDEVBASE_NAME		"chrdevbase"

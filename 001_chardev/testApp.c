@@ -19,7 +19,7 @@ int main(int argc, char * argv[])
     int f = 0;
     char readbuf[100];
     char writebuf[100];
-
+    sleep(1);
     f = open(filename, O_RDWR);
 
     if(f < 0){
@@ -34,6 +34,7 @@ int main(int argc, char * argv[])
                 return -1;
             }else{
                 printf("chardev read: %s\r\n", readbuf);
+                sleep(1);
                 close(f);
                 return 0;
             }
@@ -41,12 +42,13 @@ int main(int argc, char * argv[])
 
         case 'w':
             sprintf(writebuf, "%s", argv[3]);
-            ret = write(f, writebuf, 20);
+            ret = write(f, writebuf, 10);
             if(ret < 0 || argc < 3){
                 perror("write(): error");
                 return -1;
             }else{
                 printf("chardev write: %s\r\n", writebuf);
+                sleep(1);
                 close(f);
                 return 0;
             }

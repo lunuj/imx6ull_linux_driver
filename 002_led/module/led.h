@@ -9,7 +9,8 @@
 #define LED_ON                  1
 #define LED_OFF                 0
 
-
+#define AUTO_REGION             1           //是否自动申请设备号
+#define AUTO_NODE               1
 struct LED_REG{
     uint32_t reg_address;
     uint32_t reg_data;
@@ -18,10 +19,10 @@ struct LED_REG{
 struct new_device{
     struct cdev cdev;   //字符设备
     dev_t dev_id;       //设备号
-    struct class *class;
-    struct device *device;
     int major;          //主设备号
     int minor;          //次设备号
+    struct class *class;
+    struct device *device;
 };
 
 /**

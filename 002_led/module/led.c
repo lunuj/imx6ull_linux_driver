@@ -11,7 +11,7 @@
 
 struct new_device led;
 static int kernel_data;
-
+struct cdev led_cdev;
 
 static void led_switch(u8 sta){
     uint32_t val = 0;
@@ -100,15 +100,49 @@ static int __init led_init(void)
     writel(val,IMX6UL_GPIO1_DR);
     printk("GPIO DR init finished\r\n");
 
-	ret = register_chrdev(LED_MAJOR, DEV_NAME, &led_fops);
+    //申请设备号
+    if(AUTO_REGION){
+        //自动申请设备号
+        ret = alloc_chrdev_region(&led.dev_id,0,1,DEV_NAME);
+        led.major = MAJOR(led.dev_id);
+        led.minor = MINOR(led.dev_id);
+        printk("dev_t = %d,major = %d,minor = %d\r\n",led.dev_id,led.major,led.minor);
+    }else{
+        //手动申请设备号
+        led.dev_id = MKDEV(LED_MAJOR,0);                        //调用MKDEV函数构建设备号
+        led.major = MAJOR(led.dev_id);
+        led.minor = MINOR(led.dev_id);
+        ret = register_chrdev_region(led.dev_id,1,DEV_NAME);    //注册设备
+        printk("dev_t = %d,major = %d,minor = %d\r\n",led.dev_id,led.major,led.minor);
+    }
+
+    //字符设备注册
+    led_cdev.owner = THIS_MODULE;
+    cdev_init(&led_cdev, &led_fops);
+    cdev_add(&led_cdev, led.dev_id, 1);
+
+    //创建设备节点
+    if(AUTO_NODE){
+        //自动创建设备节点
+        led.class = class_create(THIS_MODULE, DEV_NAME);
+        led.device = device_create(led.class, NULL, led.dev_id, NULL, DEV_NAME);
+    }
 
     return ret;
 }
 
 static void __exit led_exit(void)
 {
+    //卸载设备节点
+    if(AUTO_NODE){
+        //自动创建设备节点
+        device_destroy(led.class, led.dev_id);
+        class_destroy(led.class);
+    }
+    //卸载字符设备
+    cdev_del(&led_cdev);
     //注销设备号
-	unregister_chrdev(LED_MAJOR, DEV_NAME);
+    unregister_chrdev_region(led.dev_id,1);
     //取消地址映射
     iounmap(IMX6UL_CCM_CCGR1);
     iounmap(IMX6UL_SW_MUX_GPIO1_IO03);

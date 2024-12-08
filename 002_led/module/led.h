@@ -3,16 +3,23 @@
 
 #include <linux/io.h>
 
-#define LEDREG_NUM              5
+#define LED_MAJOR	200
+
+#define DEV_NAME                "led"
+#define LED_ON                  1
+#define LED_OFF                 0
+
 
 struct LED_REG{
     uint32_t reg_address;
     uint32_t reg_data;
-}
+};
 
-struct DEVICE{
+struct new_device{
     struct cdev cdev;   //字符设备
     dev_t dev_id;       //设备号
+    struct class *class;
+    struct device *device;
     int major;          //主设备号
     int minor;          //次设备号
 };
@@ -26,6 +33,7 @@ struct DEVICE{
 #define SW_PAD_GPIO1_IO03_BASE  (0X020E02F4)
 #define GPIO1_GDIR_BASE         (0X0209C004)
 #define GPIO1_DR_BASE           (0X0209C000)
+
 
 /**
  * @brief 映射后的虚拟地址

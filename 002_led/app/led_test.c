@@ -18,7 +18,6 @@ int main(int argc, char * argv[])
     int ret = 0;
     int f = 0;
     int buf;
-    sleep(1);
     f = open(filename, O_RDWR);
 
     if(f < 0){
@@ -33,7 +32,6 @@ int main(int argc, char * argv[])
                 return -1;
             }else{
                 printf("led read: %d\r\n", buf);
-                sleep(1);
                 close(f);
                 return 0;
             }
@@ -47,7 +45,6 @@ int main(int argc, char * argv[])
                 buf = atoi(argv[3]);
                 ret = write(f, &buf, 4);
                 printf("led write: %d\r\n", buf);
-                sleep(1);   
                 close(f);
                 return 0;
             }

@@ -6,42 +6,14 @@ static uint16_t ret_val;
 struct new_device led;
 struct cdev led_cdev;
 
-/**
- * @brief 映射后的虚拟地址
- * 
- */
-static void __iomem *IMX6UL_CCM_CCGR1;              //映射后的虚拟地址
-static void __iomem *IMX6UL_SW_MUX_GPIO1_IO03;      
-static void __iomem *IMX6UL_SW_PAD_GPIO1_IO03;
-static void __iomem *IMX6UL_GPIO1_DR;
-static void __iomem *IMX6UL_GPIO1_GDIR;
-
-static void led_switch(u8 sta){
-    uint32_t val = 0;
-    if(sta == LED_ON){
-        val = readl(IMX6UL_GPIO1_DR);
-        val &= ~(1<<3);
-        writel(val, IMX6UL_GPIO1_DR);
-    }else if(sta == LED_OFF){
-        val = readl(IMX6UL_GPIO1_DR);
-        val |= (1<<3);
-        writel(val, IMX6UL_GPIO1_DR);
-    }
-}
-
-static int led_get(void){
-    uint32_t val = 0;
-    val = readl(IMX6UL_GPIO1_DR);
-    val = (val >> 3) & 0x1;
-    return LED_ON ? LED_OFF : val == 0;
-}
-
 static int led_open(struct inode * inode, struct file * filp){
     printk("[INFO]: led open\r\n");
+    filp->private_data = &led;
     return 0;
 }
 static int led_read(struct file *file, char __user *buf, size_t count, loff_t *ppos){
-    kernel_data = led_get();
+    struct new_device *dev = file->private_data;
+    kernel_data = gpio_get_value(dev->led_gpio);
     if(copy_to_user(buf, &kernel_data, 4) != 0){
         printk("[ERROR]: copy_to_user()\r\n");
         SET_ERROR(ret_val, ERROR_LED_READ);
@@ -50,13 +22,13 @@ static int led_read(struct file *file, char __user *buf, size_t count, loff_t *p
     return ret_val;
 }
 static int led_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos){
+    struct new_device *dev = file->private_data;
     if(copy_from_user(&kernel_data, buf, 4)!=0){
         printk("[ERROR]: copy_from_user()\r\n");
         SET_ERROR(ret_val, ERROR_LED_READ);
     }
-
     if(IS_OK(ret_val)){
-        led_switch(kernel_data);
+        gpio_set_value(dev->led_gpio, kernel_data);
     }
 
     printk("[INFO]: led write %d\r\n", kernel_data);
@@ -76,32 +48,30 @@ static const struct file_operations led_fops = {
 };
 
 static int devicetree_init(void){
-    uint32_t regdata[10];
     const char *str;
 
-    led.dev_nd = of_find_node_by_path("/alphaLED");
+    led.dev_nd = of_find_node_by_path("/gpioled");
     if(led.dev_nd == NULL){
         SET_ERROR(ret_val, ERROR_LED_FINDNODE);
         printk("[ERROR]: of_find_node_by_path()\r\n");
+        return ret_val;
     }
 
+    led.led_gpio = of_get_named_gpio(led.dev_nd, "led-gpio", 0);
+    if(led.led_gpio < 0){
+        SET_ERROR(ret_val, ERROR_LED_OFREADSTRING); 
+        printk("[ERROR]: of_get_named_gpio %d\r\n", led.led_gpio);
+        return ret_val;
+    }
     if(of_property_read_string(led.dev_nd, "status", &str)!=0){
         SET_ERROR(ret_val, ERROR_LED_OFREADSTRING);
         printk("[ERROR]: of_property_read_string\r\n");
+        return ret_val;
     }
-
-    if(of_property_read_u32_array(led.dev_nd,"reg",regdata,10)!=0){
-        SET_ERROR(ret_val, ERROR_LED_OFREADU32A);
+    if(gpio_direction_output(led.led_gpio, 1)){
+        SET_ERROR(ret_val, ERROR_LED_OFREADSTRING);
         printk("[ERROR]: of_property_read_string\r\n");
-    }
-
-    if(IS_OK(ret_val)){
-        //获取地址映射
-        IMX6UL_CCM_CCGR1 = ioremap(regdata[0],regdata[1]);
-        IMX6UL_SW_MUX_GPIO1_IO03 = ioremap(regdata[2],regdata[3]);
-        IMX6UL_SW_PAD_GPIO1_IO03 = ioremap(regdata[4],regdata[5]);
-        IMX6UL_GPIO1_DR = ioremap(regdata[6],regdata[7]);
-        IMX6UL_GPIO1_GDIR = ioremap(regdata[8],regdata[9]);
+        return ret_val;
     }
 
     return ret_val;
@@ -128,7 +98,9 @@ static void led_error_resolve(void){
 
 static int __init led_init(void)
 {
-    int ret = 0, val = 0;
+    int ret = 0;
+
+    devicetree_init();
 
     //申请设备号
     if(AUTO_REGION){
@@ -189,33 +161,6 @@ static int __init led_init(void)
         }
     }
 
-    if(IS_OK(devicetree_init())){
-        //CCM初始化
-        val = readl(IMX6UL_CCM_CCGR1);  //读取CCM_CCGR1的值
-        val &= ~(3<<26);                //清除bit26、27
-        val |= (3<<26);                //bit26、27置1
-        writel(val, IMX6UL_CCM_CCGR1);
-        printk("CCM init finisinithed\r\n");
-
-        //GPIO初始化
-        writel(0x5, IMX6UL_SW_MUX_GPIO1_IO03);
-        writel(0x10B0, IMX6UL_SW_PAD_GPIO1_IO03);
-        printk("GPIO SW init finished\r\n");
-
-        val = readl(IMX6UL_GPIO1_GDIR);
-        val |= 1<<3;                        //bit3=1,设置为输出
-        writel(val, IMX6UL_GPIO1_GDIR);
-        printk("GPIO GDIR init finished\r\n");
-
-        val = readl(IMX6UL_GPIO1_DR);
-        val &= ~(1<<3);
-        writel(val,IMX6UL_GPIO1_DR);
-        printk("GPIO DR init finished\r\n");
-    }else{
-        led_error_resolve();
-        return ret_val;
-    }
-
     return ret;
 }
 
@@ -231,14 +176,6 @@ static void __exit led_exit(void)
     cdev_del(&led_cdev);
     //注销设备号
     unregister_chrdev_region(led.dev_id,1);
-    //取消地址映射
-    iounmap(IMX6UL_CCM_CCGR1);
-    iounmap(IMX6UL_SW_MUX_GPIO1_IO03);
-    iounmap(IMX6UL_SW_PAD_GPIO1_IO03);
-    iounmap(IMX6UL_GPIO1_DR);
-    iounmap(IMX6UL_GPIO1_GDIR);
-
-    printk("led iounmap finisinithed\r\n");
 }
 
 module_init(led_init);

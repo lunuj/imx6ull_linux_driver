@@ -15,6 +15,7 @@
 #include <linux/of_irq.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/atomic.h>
 
 #define DEV_NAME                "beep"
 #define LED_ON                  1
@@ -37,6 +38,7 @@ struct new_device{
     struct device *device;
     struct device_node *dev_nd;
     int gpio_nm;
+    atomic_t atomic_data;       //添加原子变量
 };
 
 #endif // BEEP_H

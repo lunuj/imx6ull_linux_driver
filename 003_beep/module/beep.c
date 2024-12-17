@@ -7,8 +7,13 @@ struct new_device beep;
 struct cdev beep_cdev;
 
 static int beep_open(struct inode * inode, struct file * filp){
+    if(!atomic_dec_and_test(&beep.atomic_data)){
+        atomic_inc(&beep.atomic_data);
+        return -EBUSY;
+    }
     printk("[INFO]: beep open\r\n");
     filp->private_data = &beep;
+    atomic_read(&beep.atomic_data);
     return 0;
 }
 static int beep_read(struct file *file, char __user *buf, size_t count, loff_t *ppos){
@@ -35,6 +40,7 @@ static int beep_write(struct file *file, const char __user *buf, size_t count, l
     return ret_val;
 }
 static int beep_close(struct inode * inode, struct file * filp){
+    atomic_inc(&beep.atomic_data);
     printk("[INFO]: beep close\r\n");
     return 0;
 }
@@ -100,6 +106,7 @@ static int __init beep_init(void)
 {
     int ret = 0;
     kernel_data = 1;
+    atomic_set(&beep.atomic_data, 1);
     devicetree_init();
 
     //申请设备号

@@ -37,6 +37,7 @@ struct new_device{
     struct device *device;
     struct device_node *dev_nd;
     semaphore sema;         //定义信号量
+    struct mutex mut;       //定义互斥体
 };
 
 #endif // BEEP_H

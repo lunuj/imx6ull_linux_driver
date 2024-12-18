@@ -36,7 +36,7 @@ struct new_device{
     struct class *class;
     struct device *device;
     struct device_node *dev_nd;
-    int gpio_nm;
+    semaphore sema;         //定义信号量
 };
 
 #endif // BEEP_H

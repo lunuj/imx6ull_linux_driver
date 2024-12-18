@@ -37,6 +37,7 @@ struct new_device{
     struct device *device;
     struct device_node *dev_nd;
     int gpio_nm;
+    spinlock_t lock;
 };
 
 #endif // BEEP_H

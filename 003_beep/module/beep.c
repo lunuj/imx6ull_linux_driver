@@ -7,8 +7,13 @@ struct new_device beep;
 struct cdev beep_cdev;
 
 static int beep_open(struct inode * inode, struct file * filp){
+    spinlock_
     printk("[INFO]: beep open\r\n");
     filp->private_data = &beep;
+#if 0
+    spin_lock(&beep.lock);
+#endif
+    spin_lock_irqsave(&beep.lock);
     return 0;
 }
 static int beep_read(struct file *file, char __user *buf, size_t count, loff_t *ppos){
@@ -35,6 +40,10 @@ static int beep_write(struct file *file, const char __user *buf, size_t count, l
     return ret_val;
 }
 static int beep_close(struct inode * inode, struct file * filp){
+#if 0
+    spin_unlock(&beep.lock);
+#endif
+    spin_unlock_irqrestore(&beep.lock);
     printk("[INFO]: beep close\r\n");
     return 0;
 }
@@ -100,6 +109,7 @@ static int __init beep_init(void)
 {
     int ret = 0;
     kernel_data = 1;
+    spin_lock_init(&beep.lock);
     devicetree_init();
 
     //申请设备号

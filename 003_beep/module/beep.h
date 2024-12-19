@@ -38,6 +38,7 @@ struct new_device{
     struct device *device;
     struct device_node *dev_nd;
     int gpio_nm;
+    struct timer_list timer;
     atomic_t atomic_data;       //添加原子变量
 };
 

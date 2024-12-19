@@ -102,11 +102,28 @@ static void beep_error_resolve(void){
     }
 }
 
+timer_func(unsigned long arg){
+    static int stat = 1;
+    int value = 0;
+    struct new_device *dev = (struct new_device*)arg;
+    stat = !stat;
+    // gpio_set_value(dev->gpio,stat);
+    printk("time is %lld\r\n", jiffies);
+    value = atomic_read(&dev->atomic_data);
+    mod_timer(&dev->timer,jiffies + msecs_to_jiffies(value));
+}
+
 static int __init beep_init(void)
 {
     int ret = 0;
     kernel_data = 1;
-    atomic_set(&beep.atomic_data, 1);
+    timer_init(&beep.timer);
+    atomic_set(&beep.atomic_data, jiffies_to_msecs(1000));
+    beep.timer.expires = jiffies + &beep.atomic_data;
+    beep.timer.function = timer_func;
+    beep.timer.data = (unsigned long)&beep;
+    add_timer(&beep.timer);
+
     devicetree_init();
 
     //申请设备号

@@ -16,6 +16,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/atomic.h>
+#include <linux/timer.h>
 
 #define DEV_NAME                "beep"
 #define LED_ON                  1

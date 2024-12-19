@@ -102,13 +102,13 @@ static void beep_error_resolve(void){
     }
 }
 
-timer_func(unsigned long arg){
+void timer_func(unsigned long arg){
     static int stat = 1;
     int value = 0;
     struct new_device *dev = (struct new_device*)arg;
     stat = !stat;
     // gpio_set_value(dev->gpio,stat);
-    printk("time is %lld\r\n", jiffies);
+    printk("time is %ld\r\n", jiffies);
     value = atomic_read(&dev->atomic_data);
     mod_timer(&dev->timer,jiffies + msecs_to_jiffies(value));
 }
@@ -117,12 +117,10 @@ static int __init beep_init(void)
 {
     int ret = 0;
     kernel_data = 1;
-    timer_init(&beep.timer);
-    atomic_set(&beep.atomic_data, jiffies_to_msecs(1000));
-    beep.timer.expires = jiffies + &beep.atomic_data;
-    beep.timer.function = timer_func;
+    init_timer(&beep.timer);
+    atomic_set(&beep.atomic_data, jiffies_to_msecs(100));
+    beep.timer.function = &timer_func;
     beep.timer.data = (unsigned long)&beep;
-    add_timer(&beep.timer);
 
     devicetree_init();
 
@@ -185,11 +183,16 @@ static int __init beep_init(void)
         }
     }
 
+    beep.timer.expires = jiffies + atomic_read(&beep.atomic_data);
+    add_timer(&beep.timer);
+    printk("timer add!\r\n");
+
     return ret;
 }
 
 static void __exit beep_exit(void)
 {
+    del_timer_sync(&beep.timer);
     //卸载设备节点
     if(AUTO_NODE){
         //自动创建设备节点

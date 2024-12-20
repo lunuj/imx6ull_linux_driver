@@ -107,7 +107,7 @@ void timer_func(unsigned long arg){
     int value = 0;
     struct new_device *dev = (struct new_device*)arg;
     stat = !stat;
-    // gpio_set_value(dev->gpio,stat);
+    gpio_set_value(dev->gpio_nm,stat);
     printk("time is %ld\r\n", jiffies);
     value = atomic_read(&dev->atomic_data);
     mod_timer(&dev->timer,jiffies + msecs_to_jiffies(value));

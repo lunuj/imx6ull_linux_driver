@@ -3,9 +3,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
+
+#define CMD_CLOSE               _IO(0xEF, 1)
+#define CMD_OPEN                _IO(0xEF, 2)
+#define CMD_PERIOD              _IOW(0xEF, 3, int)
+
 
 int main(int argc, char * argv[])
 {
+    unsigned int args;
     if(argc < 3){
         printf("Usage: error\r\n");
         return -1;
@@ -40,7 +47,7 @@ int main(int argc, char * argv[])
             break;
 
         case 'w':
-            if(argc < 3){
+            if(argc < 4){
                 perror("write(): error");
                 return -1;
             }else{
@@ -52,7 +59,21 @@ int main(int argc, char * argv[])
                 return 0;
             }
             break;
-            
+        
+        case 'b':
+            ioctl(f, CMD_OPEN, &args);
+            break;
+        case 'e':
+            ioctl(f, CMD_CLOSE, &args);
+            break;
+        case 'c':
+            if(argc < 4){
+                perror("ioctl(): CMD_PERIOD error");
+                return -1;
+            }
+            args = atoi(argv[3]);
+            ioctl(f, CMD_PERIOD, &args);
+            break;
         default:
             printf("Usage: error\r\n");
             break;

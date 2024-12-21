@@ -15,13 +15,20 @@
 #include <linux/of_irq.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
-#include <linux/atomic.h>
 #include <linux/timer.h>
+
+//并发控制
+#include <linux/atomic.h>
+#include <linux/mutex.h>
 
 #define DEV_NAME                "beep"
 
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1
+
+#define CMD_CLOSE               _IO(0xEF, 1)
+#define CMD_OPEN                _IO(0xEF, 2)
+#define CMD_PERIOD              _IOW(0xEF, 3, int)
 
 #define TIMER_PERIOD_MS         1000
 
@@ -40,7 +47,8 @@ struct new_device{
     struct device_node *dev_nd;
     int gpio_nm;
     struct timer_list timer;
-    atomic_t atomic_data;       //添加原子变量
+    atomic_t atomic_data;       //添加原子变量，存放周期值
+    struct mutex mut;
 };
 
 #endif // BEEP_H

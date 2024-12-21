@@ -7,13 +7,11 @@ struct new_device beep;
 struct cdev beep_cdev;
 
 static int beep_open(struct inode * inode, struct file * filp){
-    if(!atomic_dec_and_test(&beep.atomic_data)){
-        atomic_inc(&beep.atomic_data);
+    if(!mutex_trylock(&beep.mut)){
         return -EBUSY;
     }
-    printk("[INFO]: beep open\r\n");
     filp->private_data = &beep;
-    atomic_read(&beep.atomic_data);
+    printk("[INFO]: beep open\r\n");
     return 0;
 }
 static int beep_read(struct file *file, char __user *buf, size_t count, loff_t *ppos){
@@ -40,8 +38,31 @@ static int beep_write(struct file *file, const char __user *buf, size_t count, l
     return ret_val;
 }
 static int beep_close(struct inode * inode, struct file * filp){
-    atomic_inc(&beep.atomic_data);
+    mutex_unlock(&beep.mut);
     printk("[INFO]: beep close\r\n");
+    return 0;
+}
+static long beep_ioctl(struct file *file,unsigned int cmd,unsigned long arg){
+    int ret, value;
+    struct new_device *dev = file->private_data;
+    switch(cmd){
+        case CMD_CLOSE:
+            del_timer_sync(&dev->timer);
+            gpio_set_value(dev->gpio_nm, 1);
+            break;
+        case CMD_OPEN:
+            mod_timer(&dev->timer, atomic_read(&dev->atomic_data));
+            break;
+        case CMD_PERIOD:
+            ret = copy_from_user(&value,(int *)arg,sizeof(int));  //arg是应用传递给驱动的周期值数据首地址，长度为4个字节
+            if(ret<0){
+                return -EFAULT;
+            }
+            atomic_set(&dev->atomic_data, msecs_to_jiffies(value));
+            break;
+        default:
+            printk("[ERROR]: beep_ioctl() cmd\r\n");
+    }
     return 0;
 }
 
@@ -51,6 +72,7 @@ static const struct file_operations beep_fops = {
     .read = beep_read,
     .write = beep_write,
     .release = beep_close,
+    .unlocked_ioctl = beep_ioctl
 };
 
 static int devicetree_init(void){
@@ -118,7 +140,7 @@ static int __init beep_init(void)
     int ret = 0;
     kernel_data = 1;
     devicetree_init();
-
+    mutex_init(&beep.mut);
     //申请设备号
     if(AUTO_REGION){
         //自动申请设备号
@@ -177,14 +199,13 @@ static int __init beep_init(void)
             return ret_val;
         }
     }
-    
+
     //软件定时器设置
     init_timer(&beep.timer);
     atomic_set(&beep.atomic_data, msecs_to_jiffies(TIMER_PERIOD_MS));
     beep.timer.function = &timer_func;
     beep.timer.data = (unsigned long)&beep;
     beep.timer.expires = jiffies + atomic_read(&beep.atomic_data);
-    add_timer(&beep.timer);
     printk("timer add!\r\n");
 
     return ret;

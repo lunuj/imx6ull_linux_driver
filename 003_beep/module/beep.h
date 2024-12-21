@@ -19,11 +19,11 @@
 #include <linux/timer.h>
 
 #define DEV_NAME                "beep"
-#define LED_ON                  1
-#define LED_OFF                 0
 
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1
+
+#define TIMER_PERIOD_MS         1000
 
 #if defined(AUTO_REGION)
 #define LED_MAJOR	200

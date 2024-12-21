@@ -110,18 +110,13 @@ void timer_func(unsigned long arg){
     gpio_set_value(dev->gpio_nm,stat);
     printk("time is %ld\r\n", jiffies);
     value = atomic_read(&dev->atomic_data);
-    mod_timer(&dev->timer,jiffies + msecs_to_jiffies(value));
+    mod_timer(&dev->timer,jiffies + value);
 }
 
 static int __init beep_init(void)
 {
     int ret = 0;
     kernel_data = 1;
-    init_timer(&beep.timer);
-    atomic_set(&beep.atomic_data, jiffies_to_msecs(100));
-    beep.timer.function = &timer_func;
-    beep.timer.data = (unsigned long)&beep;
-
     devicetree_init();
 
     //申请设备号
@@ -182,7 +177,12 @@ static int __init beep_init(void)
             return ret_val;
         }
     }
-
+    
+    //软件定时器设置
+    init_timer(&beep.timer);
+    atomic_set(&beep.atomic_data, msecs_to_jiffies(TIMER_PERIOD_MS));
+    beep.timer.function = &timer_func;
+    beep.timer.data = (unsigned long)&beep;
     beep.timer.expires = jiffies + atomic_read(&beep.atomic_data);
     add_timer(&beep.timer);
     printk("timer add!\r\n");

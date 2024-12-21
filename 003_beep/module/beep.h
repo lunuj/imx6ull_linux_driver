@@ -29,6 +29,7 @@
 #define CMD_CLOSE               _IO(0xEF, 1)
 #define CMD_OPEN                _IO(0xEF, 2)
 #define CMD_PERIOD              _IOW(0xEF, 3, int)
+#define CMD_READ                _IOR(0xEF, 4, int)
 
 #define TIMER_PERIOD_MS         1000
 

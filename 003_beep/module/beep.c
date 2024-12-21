@@ -60,6 +60,13 @@ static long beep_ioctl(struct file *file,unsigned int cmd,unsigned long arg){
             }
             atomic_set(&dev->atomic_data, msecs_to_jiffies(value));
             break;
+        case CMD_READ:
+            value = jiffies_to_msecs(atomic_read(&dev->atomic_data));
+            ret = copy_to_user((int *)arg, &value,sizeof(int));  //arg是应用传递给驱动的周期值数据首地址，长度为4个字节
+            if(ret<0){
+                return -EFAULT;
+            }
+            break;
         default:
             printk("[ERROR]: beep_ioctl() cmd\r\n");
     }

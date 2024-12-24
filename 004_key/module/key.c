@@ -10,13 +10,8 @@ static int key_open(struct inode * inode, struct file * filp){
 
 static ssize_t key_read(struct file * filp, __user char * buf, size_t count, loff_t * ppos){
     struct new_device * dev = filp->private_data;
-    static int trg = 0, cont = 0;
-    int ret = 0, read_data = 0;
-    read_data = ~(gpio_get_value(dev->gpio_nm));
-    trg = read_data & (read_data ^ cont);
-    cont = read_data;
-    atomic_set(&dev->atomic_data, trg);
-    ret = copy_to_user(buf, &trg, sizeof(trg));
+    int ret = 0;
+    ret = copy_to_user(buf, &dev->irqkey[0].value, sizeof(dev->irqkey[0].value));
     return ret;
 }
 
@@ -33,8 +28,28 @@ static const struct file_operations key_fops = {
     .release = key_close
 };
 
+static irqreturn_t key0_handle_irq(int irq, void *dev_id)
+{
+    struct new_device *dev = dev_id;
+
+    static int trg = 0, cont = 0;
+    int read_data = 0;
+    read_data = ~(gpio_get_value(dev->irqkey[0].gpio));
+    trg = read_data & (read_data ^ cont);
+    if(trg == 1){
+        if(cont == 0){
+            printk("[INFO]: key0 push!\r\n");
+        }else{
+            printk("[INFO]: key0 released\r\n");
+        }
+    }
+    cont = read_data;
+    return IRQ_HANDLED;
+}
+
 static int key_gpio_init(struct new_device *dev){
     int ret = 0;
+    int i = 0;
 
     //获取设备树节点
     dev->dev_nd = of_find_node_by_path("/gpiokey");
@@ -45,33 +60,58 @@ static int key_gpio_init(struct new_device *dev){
     }
     printk("[INFO]: find device key!\r\n");
 
-    //获取GPIO
-    dev->gpio_nm = of_get_named_gpio(dev->dev_nd, "key-gpio", 0);
-    if(dev->gpio_nm < 0){
-        printk("[ERROR]: of_get_named_gpio()");
-        ret = -EINVAL;
-        goto fail_gpio;
+    for(i = 0; i < KEY_NUM; i++){
+        //获取GPIO
+        dev->irqkey[i].gpio = of_get_named_gpio(dev->dev_nd, "key-gpio", 0);
+        if(dev->irqkey[i].gpio < 0){
+            printk("[ERROR]: of_get_named_gpio()");
+            ret = -EINVAL;
+            goto fail_gpio;
+        }
+
+        //请求GPIO
+        ret = gpio_request(dev->irqkey[i].gpio, dev->irqkey[i].name);
+        if(ret < 0){
+            printk("[ERROR]: gpio_request()");
+            ret = -EINVAL;
+            goto fail_request;
+        }
+
+        //配置GPIO
+        ret = gpio_direction_input(dev->irqkey[i].gpio);
+        if(ret < 0){
+            printk("[ERROR]: gpio_direction_input()");
+            ret = -EINVAL;
+            goto fail_set;
+        }
+
+        dev->irqkey[i].irqnum = gpio_to_irq(dev->irqkey[i].gpio);
     }
 
-    //请求GPIO
-    ret = gpio_request(dev->gpio_nm, "key0");
-    if(ret < 0){
-        printk("[ERROR]: gpio_request()");
-        ret = -EINVAL;
-        goto fail_request;
-    }
+    dev->irqkey[0].handler = key0_handle_irq;
+    dev->irqkey[0].value = KEY0VALUE;
 
-    //配置GPIO
-    ret = gpio_direction_input(dev->gpio_nm);
-    if(ret < 0){
-        printk("[ERROR]: gpio_direction_input()");
-        ret = -EINVAL;
-        goto fail_set;
+    for(i=0;i<KEY_NUM;i++){
+        memset(dev->irqkey[i].name,0,sizeof(dev->irqkey[i].name));
+        sprintf(dev->irqkey[i].name,"KEY%d",i);  //将格式化数据写入字符串中
+        ret = request_irq(dev->irqkey[i].irqnum,                            //中断号
+                            key0_handle_irq,                                //中断处理函数
+                            IRQ_TYPE_EDGE_RISING|IRQ_TYPE_EDGE_FALLING,     //中断处理函数
+                            dev->irqkey[i].name,                            //中断名称
+                            dev                                             //设备结构体
+                            );
+        if(ret){
+            printk("[ERROR]: irq %d request err\r\n",dev->irqkey[i].irqnum);
+            goto fail_irq;
+        }
     }
     printk("[INFO]: gpio init\r\n");
     return 0;
+fail_irq:
 fail_set:
-    gpio_free(dev->gpio_nm);
+    for(i = 0; i < KEY_NUM; i++){
+        gpio_free(dev->irqkey[i].gpio);
+    }
 fail_request:
 fail_gpio:
 fail_nd:
@@ -80,7 +120,6 @@ fail_nd:
 
 static int __init key_init(void){
     int ret = 0;
-    atomic_set(&key.atomic_data, 0);
     
     //申请设备号
     if(AUTO_REGION){
@@ -155,11 +194,19 @@ fail_devid:
 }
 
 static void __exit key_exit(void){
+    int i = 0;
+    //释放中断
+    for(i=0;i<KEY_NUM;i++){
+        free_irq(key.irqkey[i].irqnum,&key);
+    }
+
+    for(i=0;i<KEY_NUM;i++){
+        gpio_free(key.irqkey[i].gpio);
+    }
     device_destroy(key.class, key.dev_id);
     class_destroy(key.class);
     cdev_del(&key.cdev);
     unregister_chrdev_region(key.dev_id, 1);
-    gpio_free(key.gpio_nm);
 }
 
 module_init(key_init);

@@ -10,8 +10,9 @@ static int key_open(struct inode * inode, struct file * filp){
 
 static ssize_t key_read(struct file * filp, __user char * buf, size_t count, loff_t * ppos){
     struct new_device * dev = filp->private_data;
-    int ret = 0;
-    ret = copy_to_user(buf, &dev->irqkey[0].value, sizeof(dev->irqkey[0].value));
+    int ret = 0,value = 0;
+    value = atomic_read(&dev->irqkey[0].value);
+    ret = copy_to_user(buf, &value, sizeof(value));
     return ret;
 }
 
@@ -31,19 +32,8 @@ static const struct file_operations key_fops = {
 static irqreturn_t key0_handle_irq(int irq, void *dev_id)
 {
     struct new_device *dev = dev_id;
-
-    static int trg = 0, cont = 0;
-    int read_data = 0;
-    read_data = ~(gpio_get_value(dev->irqkey[0].gpio));
-    trg = read_data & (read_data ^ cont);
-    if(trg == 1){
-        if(cont == 0){
-            printk("[INFO]: key0 push!\r\n");
-        }else{
-            printk("[INFO]: key0 released\r\n");
-        }
-    }
-    cont = read_data;
+    dev->timer.data = (uint32_t)dev_id;
+    mod_timer(&dev->timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
     return IRQ_HANDLED;
 }
 
@@ -89,7 +79,7 @@ static int key_gpio_init(struct new_device *dev){
     }
 
     dev->irqkey[0].handler = key0_handle_irq;
-    dev->irqkey[0].value = KEY0VALUE;
+    atomic_set(&dev->irqkey[0].value, KEY0VALUE);
 
     for(i=0;i<KEY_NUM;i++){
         memset(dev->irqkey[i].name,0,sizeof(dev->irqkey[i].name));
@@ -116,6 +106,23 @@ fail_request:
 fail_gpio:
 fail_nd:
     return ret;
+}
+
+void timer_func(unsigned long arg){
+    struct new_device * dev = (struct new_device *)arg;
+    static int trg = 0, cont = 0;
+    int read_data = 0;
+    read_data = ~(gpio_get_value(dev->irqkey[0].gpio));
+    trg = read_data & (read_data ^ cont);
+    if(trg == 1){
+        if(cont == 0){
+            printk("[INFO]: key0 push!\r\n");
+        }else{
+            printk("[INFO]: key0 released\r\n");
+        }
+    }
+    cont = read_data;
+    atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
 }
 
 static int __init key_init(void){
@@ -171,6 +178,11 @@ static int __init key_init(void){
     printk("[INFO]: device init\r\n");
 
     ret = key_gpio_init(&key);
+
+    //初始化定时器
+    init_timer(&key.timer);
+    key.timer.function = &timer_func;
+
     if(ret < 0){
         goto fail_device;
     }

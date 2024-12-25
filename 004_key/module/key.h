@@ -37,6 +37,8 @@
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1
 
+#define TIMER_PERIOD            10
+
 #if defined(AUTO_REGION)
 #define LED_MAJOR	200
 #define DTSLED_CNT  1       //设备号个数
@@ -49,7 +51,7 @@
 struct irq_key {
     int gpio;                           //io编号
     int irqnum;                         //中断号
-    unsigned char value;                //键值
+    atomic_t value;                //键值
     char name[10];                      //按键名字
     irqreturn_t (*handler)(int,void*);  //中断处理函数  
 };
@@ -63,6 +65,8 @@ struct new_device{
     struct cdev cdev;                   //字符设备
     struct class *class;
     struct device *device;
+
+    struct timer_list timer;            //内核软件定时器
 
     struct device_node *dev_nd;         //设备节点
 

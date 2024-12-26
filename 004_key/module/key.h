@@ -51,9 +51,10 @@
 struct irq_key {
     int gpio;                           //io编号
     int irqnum;                         //中断号
-    atomic_t value;                //键值
+    atomic_t value;                     //键值
     char name[10];                      //按键名字
-    irqreturn_t (*handler)(int,void*);  //中断处理函数  
+    irqreturn_t (*handler)(int,void*);  //中断处理函数
+    struct work_struct work;
 };
 
 struct new_device{

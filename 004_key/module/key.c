@@ -32,9 +32,13 @@ static const struct file_operations key_fops = {
 static irqreturn_t key0_handle_irq(int irq, void *dev_id)
 {
     struct new_device *dev = dev_id;
-    dev->timer.data = (uint32_t)dev_id;
-    mod_timer(&dev->timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
+    schedule_work(&dev->irqkey[0].work);
     return IRQ_HANDLED;
+}
+
+static void key0_work_handle(struct work_struct * work){
+    key.timer.data = (uint32_t)&key;
+    mod_timer(&key.timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
 }
 
 static int key_gpio_init(struct new_device *dev){
@@ -80,6 +84,7 @@ static int key_gpio_init(struct new_device *dev){
 
     dev->irqkey[0].handler = key0_handle_irq;
     atomic_set(&dev->irqkey[0].value, KEY0VALUE);
+    INIT_WORK(&dev->irqkey[0].work, key0_work_handle);
 
     for(i=0;i<KEY_NUM;i++){
         memset(dev->irqkey[i].name,0,sizeof(dev->irqkey[i].name));

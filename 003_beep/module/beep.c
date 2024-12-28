@@ -13,11 +13,15 @@ static int beep_open(struct inode * inode, struct file * filp){
         down(&beep.sema);
         break;
     case 2:
-        mutex_lock(&beep.mut);
         if(!mutex_trylock(&beep.mut)){
             return -EBUSY;
         }
         break;    
+    case 3:
+        spin_lock(&beep.lock);
+        break;
+    case 4:
+        spin_lock_irqsave(&beep.lock, beep.lock_flags);
     default:
         break;
     }
@@ -57,6 +61,12 @@ static int beep_close(struct inode * inode, struct file * filp){
         break;
     case 2:
         mutex_unlock(&beep.mut);
+        break;
+    case 3:
+        spin_unlock(&beep.lock);
+        break;
+    case 4:
+        spin_unlock_irqrestore(&beep.lock, beep.lock_flags);
         break;
     default:
         break;
@@ -169,6 +179,7 @@ static int __init beep_init(void)
 {
     int ret = 0;
     kernel_data = 1;
+    spin_lock_init(&beep.lock);
     devicetree_init();
     mutex_init(&beep.mut);
     //申请设备号

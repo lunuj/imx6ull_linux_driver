@@ -22,7 +22,7 @@
 #include <linux/mutex.h>
 
 #define DEV_NAME                "beep"
-#define BEEP_MODE               0
+#define BEEP_MODE               2
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1
 
@@ -50,8 +50,10 @@ struct new_device{
 
     int gpio_nm;
 
-    struct semaphore sema;                     //定义信号量
+    struct semaphore sema;              //定义信号量
     struct mutex mut;                   //定义互斥体
+    spinlock_t lock;                    //定义自旋锁
+    unsigned long lock_flags;                     //中断标志
 
     struct timer_list timer;
     atomic_t atomic_data;               //添加原子变量，存放周期值

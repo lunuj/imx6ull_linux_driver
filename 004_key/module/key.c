@@ -112,16 +112,15 @@ void timer_func(unsigned long arg){
     struct new_device * dev = (struct new_device *)arg;
     static int trg = 0, cont = 0;
     int read_data = 0;
-    read_data = ~(gpio_get_value(dev->irqkey[0].gpio));
+    read_data = ~gpio_get_value(dev->irqkey[0].gpio) + 2;
     trg = read_data & (read_data ^ cont);
-    if(trg == 1){
-        if(cont == 0){
-            printk("[INFO]: key0 push!\r\n");
-        }else{
-            printk("[INFO]: key0 released\r\n");
-        }
-    }
     cont = read_data;
+    if(trg == 1 && cont == 1){
+        printk("[INFO]: key0 push!\r\n");
+    }else if(trg ==0 && cont == 0){
+        printk("[INFO]: key0 released\r\n");
+    }
+    
     atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
 }
 

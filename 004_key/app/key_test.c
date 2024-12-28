@@ -33,8 +33,16 @@ int main(int argc, char * argv[])
     int value = 0;
     while(1){
         read(f, &value, sizeof(value));
-        if(value == 1){
-            printf("key press\r\n");
+        if(value == 3){
+            printf("key trg down\r\n");
+            printf("key on\r\n");
+            while(1){
+                read(f, &value, sizeof(value));
+                if(value == 0){
+                    printf("key trg up\r\n");
+                    break;
+                }
+            }
         }
     }
 

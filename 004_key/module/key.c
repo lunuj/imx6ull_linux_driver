@@ -32,9 +32,30 @@ static const struct file_operations key_fops = {
 static irqreturn_t key0_handle_irq(int irq, void *dev_id)
 {
     struct new_device *dev = dev_id;
-    dev->timer.data = (uint32_t)dev_id;
-    mod_timer(&dev->timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
+    switch(KEY_MODE){
+        case 1:
+            tasklet_schedule(&dev->irqkey[0].tasklet);
+            break;
+        case 2:
+            schedule_work(&dev->irqkey[0].work);
+            break;
+        default:
+            key.timer.data = (uint32_t)&key;
+            mod_timer(&key.timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
+            break;
+    }
     return IRQ_HANDLED;
+}
+
+static void key0_tasklet_handle(unsigned long arg){
+    struct new_device *dev = (struct new_device *)arg;
+    dev->timer.data = (uint32_t)arg;
+    mod_timer(&dev->timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
+}
+
+static void key0_work_handle(struct work_struct * work){
+    key.timer.data = (uint32_t)&key;
+    mod_timer(&key.timer, jiffies + msecs_to_jiffies(TIMER_PERIOD));
 }
 
 static int key_gpio_init(struct new_device *dev){
@@ -80,6 +101,17 @@ static int key_gpio_init(struct new_device *dev){
 
     dev->irqkey[0].handler = key0_handle_irq;
     atomic_set(&dev->irqkey[0].value, KEY0VALUE);
+    switch (KEY_MODE)
+    {
+        case 1:
+            tasklet_init(&dev->irqkey[0].tasklet, key0_tasklet_handle, (unsigned long)dev);
+            break;
+        case 2:
+            INIT_WORK(&dev->irqkey[0].work, key0_work_handle);
+            break;
+        default:
+            break;
+    }
 
     for(i=0;i<KEY_NUM;i++){
         memset(dev->irqkey[i].name,0,sizeof(dev->irqkey[i].name));
@@ -120,7 +152,6 @@ void timer_func(unsigned long arg){
     }else if(trg ==0 && cont == 0){
         printk("[INFO]: key0 released\r\n");
     }
-    
     atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
 }
 
@@ -206,6 +237,7 @@ fail_devid:
 
 static void __exit key_exit(void){
     int i = 0;
+    del_timer_sync(&key.timer);
     //释放中断
     for(i=0;i<KEY_NUM;i++){
         free_irq(key.irqkey[i].irqnum,&key);

@@ -33,7 +33,10 @@
 
 #define DEV_NAME                "key"
 #define KEY_NUM                 1
-#define KEY0VALUE               0XF0        // 按键值
+#define KEY_MODE                2           //0：在irq中启用定时器
+                                            //1：在tasklet中启用定时器
+                                            //2：在work中启用定时器
+#define KEY0VALUE               0X00        // 按键值
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1
 
@@ -51,9 +54,11 @@
 struct irq_key {
     int gpio;                           //io编号
     int irqnum;                         //中断号
-    atomic_t value;                //键值
+    atomic_t value;                          //键值
     char name[10];                      //按键名字
-    irqreturn_t (*handler)(int,void*);  //中断处理函数  
+    irqreturn_t (*handler)(int,void*);  //中断处理函数
+    struct tasklet_struct tasklet;      //下半部处理函数    
+    struct work_struct work;
 };
 
 struct new_device{

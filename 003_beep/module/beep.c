@@ -7,9 +7,21 @@ struct new_device beep;
 struct cdev beep_cdev;
 
 static int beep_open(struct inode * inode, struct file * filp){
-    if(!mutex_trylock(&beep.mut)){
-        return -EBUSY;
+    switch (BEEP_MODE)
+    {
+    case 1:
+        down(&beep.sema);
+        break;
+    case 2:
+        mutex_lock(&beep.mut);
+        if(!mutex_trylock(&beep.mut)){
+            return -EBUSY;
+        }
+        break;    
+    default:
+        break;
     }
+
     filp->private_data = &beep;
     printk("[INFO]: beep open\r\n");
     return 0;
@@ -38,7 +50,17 @@ static int beep_write(struct file *file, const char __user *buf, size_t count, l
     return ret_val;
 }
 static int beep_close(struct inode * inode, struct file * filp){
-    mutex_unlock(&beep.mut);
+    switch (BEEP_MODE)
+    {
+    case 1:
+        up(&beep.sema);
+        break;
+    case 2:
+        mutex_unlock(&beep.mut);
+        break;
+    default:
+        break;
+    }
     printk("[INFO]: beep close\r\n");
     return 0;
 }
@@ -84,7 +106,8 @@ static const struct file_operations beep_fops = {
 
 static int devicetree_init(void){
     const char *str;
-
+    sema_init(&beep.sema,1);
+    mutex_init(&beep.mut);
     beep.dev_nd = of_find_node_by_path("/gpiobeep");
     if(beep.dev_nd == NULL){
         SET_ERROR(ret_val, ERROR_LED_FINDNODE);

@@ -38,6 +38,13 @@
 #define KEY_MODE                0           //0：在irq中启用定时器
                                             //1：在tasklet中启用定时器
                                             //2：在work中启用定时器
+
+#define APP_MODE                2           //0：不启用阻塞访问控制
+                                            //1：使用等待队列头进行阻塞访问
+                                            //2：使用等待队列进行阻塞访问
+                                            //3：使用select进行非阻塞访问
+                                            //4：使用信号进行异步访问
+
 #define KEY0VALUE               0X00        // 按键值
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1

@@ -30,10 +30,12 @@
 //并发控制
 #include <linux/atomic.h>
 #include <linux/mutex.h>
+#include <linux/wait.h>
+#include <linux/ide.h>
 
 #define DEV_NAME                "key"
 #define KEY_NUM                 1
-#define KEY_MODE                2           //0：在irq中启用定时器
+#define KEY_MODE                0           //0：在irq中启用定时器
                                             //1：在tasklet中启用定时器
                                             //2：在work中启用定时器
 #define KEY0VALUE               0X00        // 按键值
@@ -76,6 +78,8 @@ struct new_device{
     struct device_node *dev_nd;         //设备节点
 
     struct irq_key irqkey[KEY_NUM];
+
+    wait_queue_head_t r_wait;
 };
 
 

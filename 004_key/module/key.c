@@ -11,6 +11,7 @@ static int key_open(struct inode * inode, struct file * filp){
 static ssize_t key_read(struct file * filp, __user char * buf, size_t count, loff_t * ppos){
     struct new_device * dev = filp->private_data;
     int ret = 0,value = 0;
+    wait_event_interruptible(dev->r_wait, atomic_read(&dev->irqkey[0].value));
     value = atomic_read(&dev->irqkey[0].value);
     ret = copy_to_user(buf, &value, sizeof(value));
     return ret;
@@ -101,6 +102,7 @@ static int key_gpio_init(struct new_device *dev){
 
     dev->irqkey[0].handler = key0_handle_irq;
     atomic_set(&dev->irqkey[0].value, KEY0VALUE);
+    init_waitqueue_head(&dev->r_wait);
     switch (KEY_MODE)
     {
         case 1:
@@ -153,6 +155,7 @@ void timer_func(unsigned long arg){
         printk("[INFO]: key0 released\r\n");
     }
     atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
+    wake_up(&dev->r_wait);
 }
 
 static int __init key_init(void){

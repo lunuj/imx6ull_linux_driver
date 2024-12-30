@@ -88,6 +88,8 @@ struct new_device{
     struct irq_key irqkey[KEY_NUM];
 
     wait_queue_head_t r_wait;
+
+    struct fasync_struct * fasync_queue;
 };
 
 

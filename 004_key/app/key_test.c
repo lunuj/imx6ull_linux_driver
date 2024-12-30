@@ -3,6 +3,20 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <signal.h>
+int f = 0;
+
+static void sigio_singal_func(int num)
+{
+    int value;
+    read(f, &value, sizeof(value));
+    if(value == 3){
+        printf("key trg down\r\n");
+        printf("key on\r\n");
+    }else{
+        printf("error\r\n");
+    }
+}
 
 int main(int argc, char * argv[])
 {
@@ -25,7 +39,6 @@ int main(int argc, char * argv[])
     printf("modulname %s\r\n", argv[0]);
     sleep(1);
     int ret = 0;
-    int f = 0;
     int buf;
     f = open(filename, O_RDWR|O_NONBLOCK);
 
@@ -34,6 +47,13 @@ int main(int argc, char * argv[])
         return -1;
     }
 
+    signal(SIGIO,sigio_singal_func);
+    fcntl(f,F_SETOWN,getpid());     //设置当前进程接收信号
+    flags =fcntl(f,F_GETFL);
+    fcntl(f,F_SETFL,flags|FASYNC);  //开启异步通知
+    while(1){
+        sleep(2);
+    }
     int value = 0;
     while(1){
         FD_ZERO(&readfds);
@@ -57,9 +77,7 @@ int main(int argc, char * argv[])
                 }
                 break;
         }
-
-
     }
-
+    close(f);
     return 0;
 }

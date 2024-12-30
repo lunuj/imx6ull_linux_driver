@@ -46,9 +46,15 @@ static unsigned int key_poll(struct file * filp, struct poll_table_struct * wait
     return mask;
 }
 
+static int key_fsync(int fd, struct file * filp, int on){
+    struct new_device * dev  = filp.private_data;
+    return fasync_helper(fd, filp, on, &dev->fasync_queue);
+}
+
 static int key_close(struct inode * inode, struct file * filp){
     printk("[INFO]: key_close!\r\n");
     filp->private_data = &key;
+    key_fsync(-1,filp,0);
     return 0;  
 }
 
@@ -57,6 +63,7 @@ static const struct file_operations key_fops = {
     .open = key_open,
     .read = key_read,
     .poll = key_poll,
+    .fsync = key_fsyn,
     .release = key_close
 };
 
@@ -201,6 +208,8 @@ void timer_func(unsigned long arg){
     case 1:
         wake_up(&dev->r_wait);
         break;
+    case 4:
+        kill_fasync(&dev->fasync_queue,SIGIO,POLL_IN);
     default:
         break;
     }

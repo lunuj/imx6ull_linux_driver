@@ -32,6 +32,7 @@
 #include <linux/mutex.h>
 #include <linux/wait.h>
 #include <linux/ide.h>
+#include <linux/poll.h>
 
 #define DEV_NAME                "key"
 #define KEY_NUM                 1
@@ -39,7 +40,7 @@
                                             //1：在tasklet中启用定时器
                                             //2：在work中启用定时器
 
-#define APP_MODE                2           //0：不启用阻塞访问控制
+#define APP_MODE                3           //0：不启用阻塞访问控制
                                             //1：使用等待队列头进行阻塞访问
                                             //2：使用等待队列进行阻塞访问
                                             //3：使用select进行非阻塞访问

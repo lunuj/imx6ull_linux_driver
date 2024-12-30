@@ -34,6 +34,18 @@ static ssize_t key_read(struct file * filp, __user char * buf, size_t count, lof
     return ret;
 }
 
+static unsigned int key_poll(struct file * filp, struct poll_table_struct * wait){
+    int mask = 0;
+    static int cont = 0;
+    struct new_device * dev = filp->private_data;
+    printk("cont = %d\r\n", cont++);
+    poll_wait(filp, &dev->r_wait, wait);
+    if(atomic_read(&dev->irqkey[0].value)){
+        mask = POLLIN | POLLRDNORM;
+    }
+    return mask;
+}
+
 static int key_close(struct inode * inode, struct file * filp){
     printk("[INFO]: key_close!\r\n");
     filp->private_data = &key;
@@ -44,6 +56,7 @@ static const struct file_operations key_fops = {
     .owner = THIS_MODULE,
     .open = key_open,
     .read = key_read,
+    .poll = key_poll,
     .release = key_close
 };
 
@@ -121,6 +134,7 @@ static int key_gpio_init(struct new_device *dev){
     atomic_set(&dev->irqkey[0].value, KEY0VALUE);
     switch (APP_MODE)
     {
+    case 3:
     case 2:
     case 1:
         init_waitqueue_head(&dev->r_wait);

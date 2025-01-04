@@ -11,17 +11,20 @@ static void sigio_singal_func(int num)
     int value;
     read(f, &value, sizeof(value));
     if(value == 3){
-        printf("key trg down\r\n");
+        printf("key down\r\n");
+    }else if(value == 1){
         printf("key on\r\n");
+    }else if(value == 2){
+        printf("key up\r\n");
     }else{
-        printf("error\r\n");
+        printf("key off\r\n");
     }
 }
 
 int main(int argc, char * argv[])
 {
     unsigned int args;
-    int flag = 0;
+    int flags = 0;
 
     fd_set readfds;
     struct timeval timeout;
@@ -30,7 +33,7 @@ int main(int argc, char * argv[])
         printf("Usage: error\r\n");
         return -1;
     }else{
-        flag = 1;
+        flags = 1;
     }
 
     char * filename;
@@ -52,31 +55,7 @@ int main(int argc, char * argv[])
     flags =fcntl(f,F_GETFL);
     fcntl(f,F_SETFL,flags|FASYNC);  //开启异步通知
     while(1){
-        sleep(2);
-    }
-    int value = 0;
-    while(1){
-        FD_ZERO(&readfds);
-        FD_SET(f,&readfds);
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 500000;    //500ms
-        ret = select(f+1,&readfds,NULL,NULL,&timeout);
-        switch(ret){
-            case 0:  //超时
-                break;
-            case -1: //错误
-                break;
-            default:
-                //可以读数
-                if(FD_ISSET(f,&readfds)){
-                    read(f, &value, sizeof(value));
-                    if(value == 3){
-                        printf("key trg down\r\n");
-                        printf("key on\r\n");
-                    }    
-                }
-                break;
-        }
+        sleep(0);
     }
     close(f);
     return 0;

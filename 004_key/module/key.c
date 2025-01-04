@@ -11,7 +11,18 @@ static int key_open(struct inode * inode, struct file * filp){
 static ssize_t key_read(struct file * filp, __user char * buf, size_t count, loff_t * ppos){
     struct new_device * dev = filp->private_data;
     int ret = 0,value = 0;
+
     DECLARE_WAITQUEUE(wait, current);
+
+    static int trg = 0, cont = 0;
+    int read_data = 0;
+
+    read_data = atomic_read(&dev->irqkey[0].value);
+    trg = read_data ^ cont;
+    cont = read_data;
+
+    atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
+
     switch (APP_MODE)
     {
     case 1:
@@ -26,6 +37,8 @@ static ssize_t key_read(struct file * filp, __user char * buf, size_t count, lof
         if(signal_pending(current)){
             return -ERESTARTSYS;
         }
+    case 4:
+
     default:
         break;
     }
@@ -47,7 +60,7 @@ static unsigned int key_poll(struct file * filp, struct poll_table_struct * wait
 }
 
 static int key_fsync(int fd, struct file * filp, int on){
-    struct new_device * dev  = filp.private_data;
+    struct new_device * dev  = filp->private_data;
     return fasync_helper(fd, filp, on, &dev->fasync_queue);
 }
 
@@ -63,7 +76,7 @@ static const struct file_operations key_fops = {
     .open = key_open,
     .read = key_read,
     .poll = key_poll,
-    .fsync = key_fsyn,
+    .fasync = key_fsync,
     .release = key_close
 };
 
@@ -191,17 +204,8 @@ fail_nd:
 
 void timer_func(unsigned long arg){
     struct new_device * dev = (struct new_device *)arg;
-    static int trg = 0, cont = 0;
-    int read_data = 0;
-    read_data = ~gpio_get_value(dev->irqkey[0].gpio) + 2;
-    trg = read_data & (read_data ^ cont);
-    cont = read_data;
-    if(trg == 1 && cont == 1){
-        printk("[INFO]: key0 push!\r\n");
-    }else if(trg ==0 && cont == 0){
-        printk("[INFO]: key0 released\r\n");
-    }
-    atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
+
+    atomic_set(&dev->irqkey[0].value, ~gpio_get_value(dev->irqkey[0].gpio) + 2);
     switch (APP_MODE)
     {
     case 2:

@@ -16,6 +16,7 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 
+#include <linux/fcntl.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_gpio.h>
@@ -40,7 +41,7 @@
                                             //1：在tasklet中启用定时器
                                             //2：在work中启用定时器
 
-#define APP_MODE                3           //0：不启用阻塞访问控制
+#define APP_MODE                4           //0：不启用阻塞访问控制
                                             //1：使用等待队列头进行阻塞访问
                                             //2：使用等待队列进行阻塞访问
                                             //3：使用select进行非阻塞访问
@@ -90,6 +91,8 @@ struct new_device{
     struct irq_key irqkey[KEY_NUM];
 
     wait_queue_head_t r_wait;
+
+    struct fasync_struct * fasync_queue;
 };
 
 

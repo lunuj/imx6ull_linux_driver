@@ -36,11 +36,17 @@ static ssize_t key_read(struct file * filp, __user char * buf, size_t count, lof
 
 static unsigned int key_poll(struct file * filp, struct poll_table_struct * wait){
     int mask = 0;
-    static int cont = 0;
     struct new_device * dev = filp->private_data;
-    printk("cont = %d\r\n", cont++);
+    static int trg = 0, cont = 0;
+    int read_data = 0;
+
+    read_data = atomic_read(&dev->irqkey[0].value)&0x1;
+    trg = read_data ^ cont;
+    cont = read_data;
+    atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
+    
     poll_wait(filp, &dev->r_wait, wait);
-    if(atomic_read(&dev->irqkey[0].value)){
+    if(trg){
         mask = POLLIN | POLLRDNORM;
     }
     return mask;
@@ -160,7 +166,7 @@ static int key_gpio_init(struct new_device *dev){
         sprintf(dev->irqkey[i].name,"KEY%d",i);  //将格式化数据写入字符串中
         ret = request_irq(dev->irqkey[i].irqnum,                            //中断号
                             key0_handle_irq,                                //中断处理函数
-                            IRQ_TYPE_EDGE_RISING|IRQ_TYPE_EDGE_FALLING,     //中断处理函数
+                            IRQ_TYPE_EDGE_BOTH,     //中断处理函数
                             dev->irqkey[i].name,                            //中断名称
                             dev                                             //设备结构体
                             );
@@ -184,21 +190,13 @@ fail_nd:
 
 void timer_func(unsigned long arg){
     struct new_device * dev = (struct new_device *)arg;
-    static int trg = 0, cont = 0;
-    int read_data = 0;
-    read_data = ~gpio_get_value(dev->irqkey[0].gpio) + 2;
-    trg = read_data & (read_data ^ cont);
-    cont = read_data;
-    if(trg == 1 && cont == 1){
-        printk("[INFO]: key0 push!\r\n");
-    }else if(trg ==0 && cont == 0){
-        printk("[INFO]: key0 released\r\n");
-    }
-    atomic_set(&dev->irqkey[0].value, (cont&0x1) + ((trg&0x1) << 1));
+    atomic_set(&dev->irqkey[0].value, ~gpio_get_value(dev->irqkey[0].gpio) + 2);
     switch (APP_MODE)
     {
+    case 3:
     case 2:
     case 1:
+        printk("[INFO]: timer trig %d\r\n", atomic_read(&dev->irqkey[0].value));
         wake_up(&dev->r_wait);
         break;
     default:

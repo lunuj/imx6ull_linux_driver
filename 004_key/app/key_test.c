@@ -38,28 +38,34 @@ int main(int argc, char * argv[])
     while(1){
         FD_ZERO(&readfds);
         FD_SET(f,&readfds);
-        timeout.tv_sec = 0;
+        timeout.tv_sec = 10;
         timeout.tv_usec = 500000;    //500ms
         ret = select(f+1,&readfds,NULL,NULL,&timeout);
+        printf("[INFO]: ret value = %d!\r\n",ret);
         switch(ret){
             case 0:  //超时
-                break;
+                printf("[INFO]: timeout!\r\n");
+                close(f);
+                return;
             case -1: //错误
-                break;
+                printf("[INFO]: error!\r\n");
+                return;
             default:
+                printf("[INFO]: read start!\r\n");
                 //可以读数
                 if(FD_ISSET(f,&readfds)){
                     read(f, &value, sizeof(value));
                     if(value == 3){
-                        printf("key trg down\r\n");
-                        printf("key on\r\n");
-                    }    
+                        printf("[INFO]: key down\r\n");
+                    }
+                    if(value == 2){
+                        printf("[INFO]: key up\r\n");
+                    }
                 }
                 break;
         }
-
-
     }
 
+    close(f);
     return 0;
 }

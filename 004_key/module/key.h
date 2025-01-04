@@ -50,6 +50,8 @@
 #define AUTO_REGION             1           //是否自动申请设备号
 #define AUTO_NODE               1
 
+
+
 #define TIMER_PERIOD            10
 
 #if defined(AUTO_REGION)

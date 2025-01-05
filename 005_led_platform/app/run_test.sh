@@ -1,5 +1,5 @@
 #!/bin/bash
-rmmod led
+rmmod leddriver
 depmod
-modprobe led
-mknod /dev/led c 200 0
+modprobe /dev/platform_led
+./leddriver_test /dev/platform_led

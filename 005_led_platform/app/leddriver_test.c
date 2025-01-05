@@ -17,7 +17,7 @@ int main(int argc, char * argv[])
     printf("modulname %s\r\n", argv[0]);
     int ret = 0;
     int f = 0;
-    int buf;
+    unsigned char buf;
     sleep(1);
     f = open(filename, O_RDWR);
 
@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
 
     switch(argv[2][0]){
         case 'r':
-            ret = read(f, &buf, 4);
+            ret = read(f, &buf, 1);
             if(ret < 0){
                 perror("read(): error");
                 return -1;

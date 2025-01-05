@@ -13,7 +13,7 @@ struct platform_device leddevice = {
     },
     .num_resources = ARRAY_SIZE(leddevice_resource),     //资源大小
     .resource = leddevice_resource
-}
+};
 
 static int __init leddevice_init(void){
     //注册platform设备

@@ -4,7 +4,9 @@ CURRENT_PATH 	:= $(shell pwd)
 MODULES_SRC		:= $(CURRENT_PATH)/module
 APP_SRC			:= $(CURRENT_PATH)/app
 
-MODULES_NAME	:= leddevice
+MODULES_NAME	:= leddriver
+DEVICE_NAME		:= leddevice
+DRIVER_NAME		:= leddriver
 APP_NAME		:= $(MODULES_NAME)_test
 
 ARCH			:=arm
@@ -17,6 +19,8 @@ export ARCH
 export CROSS_COMPILE
 
 export MODULES_NAME
+export DEVICE_NAME
+export DRIVER_NAME
 export APP_NAME
 
 export CC
@@ -24,7 +28,7 @@ export CC
 build: modules app
 
 cp:
-	sudo cp $(MODULES_SRC)/$(MODULES_NAME).ko $(ROOTFS)/lib/modules/4.1.15/
+	sudo cp $(MODULES_SRC)/*.ko $(ROOTFS)/lib/modules/4.1.15/
 
 modules:
 	$(MAKE) -C $(MODULES_SRC) modules

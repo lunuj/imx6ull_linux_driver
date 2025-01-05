@@ -39,7 +39,7 @@ static void __iomem *IMX6UL_GPIO1_DR;
 struct new_dev {
     dev_t dev_id;
     int major;
-    int minjor;
+    int minor;
 
     struct device_node * device_node;
     struct cdev cdev;
